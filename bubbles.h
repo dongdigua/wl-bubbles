@@ -15,7 +15,7 @@ struct _app {
     } bubbles[NBUBBLES];
 };
 
-bool collides(struct _app *app, int a, int b) {
+static inline bool collides(struct _app *app, int a, int b) {
     float dx = app->bubbles[a].pos.x - app->bubbles[b].pos.x;
     float dy = app->bubbles[a].pos.y - app->bubbles[b].pos.y;
     float dist = SDL_sqrtf(dx * dx + dy * dy);

@@ -16,16 +16,16 @@ SDL_Window *window;
 SDL_Renderer *renderer;
 
 struct {
+	bool configured;
+
     /* These are owned by SDL and must not be destroyed! */
     struct wl_display *wl_display;
     struct wl_surface *wl_surface;
 
-    struct zwlr_layer_surface_v1 *layer_surface;
-	bool configured;
-
     /* These are owned by the application and need to be cleaned up on exit. */
     struct wl_registry *wl_registry;
     struct zwlr_layer_shell_v1 *layer_shell;
+    struct zwlr_layer_surface_v1 *layer_surface;
 } wl_state = {0};
 
 struct _app app = {0};
@@ -39,7 +39,7 @@ static void registry_handle_global (void *data, struct wl_registry *registry,
 		uint32_t name, const char *interface, uint32_t version)
 {
 	if ( strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0 )
-		wl_state.layer_shell = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, 1);
+		wl_state.layer_shell = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, version);
 }
 
 static const struct wl_registry_listener registry_listener = {
@@ -96,8 +96,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_WAYLAND_SURFACE_ROLE_CUSTOM_BOOLEAN, true);   /* Roleless surface */
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, true);                        /* OpenGL enabled */
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, true);                   /* Transparent window */
-    //SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, WINDOW_WIDTH);                       /* Default width */
-    //SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, WINDOW_HEIGHT);                     /* Default height */
     SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, true);            /* Handle DPI scaling internally */
     SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, "Wayland custom surface role test"); /* Default title */
 
@@ -246,5 +244,16 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
 {
     if (wl_state.layer_surface)
         zwlr_layer_surface_v1_destroy(wl_state.layer_surface);
+    #ifdef ZWLR_LAYER_SHELL_V1_DESTROY_SINCE_VERSION
+    if (wl_state.layer_shell)
+        zwlr_layer_shell_v1_destroy(wl_state.layer_shell);
+    #endif
+    if (wl_state.wl_registry)
+        wl_registry_destroy(wl_state.wl_registry);
     
+    for (int i = 0; i < 3; i++)
+        if (app.textures[i])
+            SDL_DestroyTexture(app.textures[i]);
+
+    /* SDL will clean up the window/renderer for us. */
 }
