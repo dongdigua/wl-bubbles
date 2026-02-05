@@ -26,6 +26,7 @@ struct {
     struct wl_registry *wl_registry;
     struct zwlr_layer_shell_v1 *layer_shell;
     struct zwlr_layer_surface_v1 *layer_surface;
+    struct wl_compositor *compositor;
 } wl_state = {0};
 
 struct _app app = {0};
@@ -40,6 +41,8 @@ static void registry_handle_global (void *data, struct wl_registry *registry,
 {
 	if ( strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0 )
 		wl_state.layer_shell = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, version);
+    else if ( strcmp(interface, wl_compositor_interface.name) == 0 )
+        wl_state.compositor = wl_registry_bind(registry, name, &wl_compositor_interface, version);
 }
 
 static const struct wl_registry_listener registry_listener = {
@@ -139,7 +142,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 		wl_state.layer_shell,
 		wl_state.wl_surface,
 		NULL,
-		ZWLR_LAYER_SHELL_V1_LAYER_TOP,
+		ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY,
 		"bubbles"
 	);
 
@@ -162,12 +165,12 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 		ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT
 	);
 
-    zwlr_layer_surface_v1_set_keyboard_interactivity(
-        wl_state.layer_surface,
-        1
-    );
-
     zwlr_layer_surface_v1_set_exclusive_zone(wl_state.layer_surface, -1);
+
+    /* Set input region to empty to allow click-through */
+    struct wl_region *region = wl_compositor_create_region(wl_state.compositor);
+    wl_surface_set_input_region(wl_state.wl_surface, region);
+    wl_region_destroy(region);
 
     wl_surface_commit(wl_state.wl_surface);
 
@@ -179,9 +182,6 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *e)
     switch (e->type) {
     case SDL_EVENT_QUIT:
         return SDL_APP_SUCCESS;
-    case SDL_EVENT_KEY_DOWN:
-        if (e->key.key == SDLK_ESCAPE || e->key.key == SDLK_SPACE)
-            return SDL_APP_SUCCESS;
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
         int w, h;
         SDL_GetRenderOutputSize(renderer, &w, &h);
@@ -192,9 +192,11 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *e)
     return SDL_APP_CONTINUE;
 }
 
+#define FPS 60
+
 SDL_AppResult SDL_AppIterate(void *appstate)
 {
-    SDL_Delay(1000/60);
+    SDL_Delay(1000/FPS);
 
     if (!wl_state.configured)
         return SDL_APP_CONTINUE;

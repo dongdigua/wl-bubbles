@@ -1,4 +1,4 @@
-Windows 7 bubbles -like screensaver for wayland
+Windows 7 Bubbles -like screensaver for wayland
 
 highly inspired by https://github.com/khang-nd/bubbles
 
