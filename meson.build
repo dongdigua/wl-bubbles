@@ -1,4 +1,4 @@
-project('wl-bubbles', 'c')
+project('wl-bubbles', 'c', default_options: ['c_std = c23'])
 
 deps = []
 deps += dependency('wayland-client')

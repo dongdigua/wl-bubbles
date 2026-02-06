@@ -12,6 +12,10 @@
 
 #include "bubbles.h"
 
+#if __STDC_VERSION__ > 202300L
+#include "img.h"
+#endif
+
 SDL_Window *window;
 SDL_Renderer *renderer;
 
@@ -85,7 +89,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     }
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
-        SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
@@ -117,9 +121,17 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     }
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
+#if __STDC_VERSION__ > 202300L
+    app.textures[0] = IMG_LoadTexture_IO(renderer, SDL_IOFromConstMem(bubble_blue,   sizeof(bubble_blue)), true);
+    app.textures[1] = IMG_LoadTexture_IO(renderer, SDL_IOFromConstMem(bubble_purple, sizeof(bubble_purple)), true);
+    app.textures[2] = IMG_LoadTexture_IO(renderer, SDL_IOFromConstMem(bubble_red,    sizeof(bubble_red)), true);
+#else
+    SDL_Log("Loading assets");
     app.textures[0] = IMG_LoadTexture(renderer, "img/bubble-blue.png");
     app.textures[1] = IMG_LoadTexture(renderer, "img/bubble-purple.png");
     app.textures[2] = IMG_LoadTexture(renderer, "img/bubble-red.png");
+#endif
+
     assert(app.textures[0] && app.textures[1] && app.textures[2]);
 
     /* Get the display object and use it to create a registry object, which will enumerate the xdg_wm_base protocol. */
@@ -181,6 +193,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *e)
 {
     switch (e->type) {
     case SDL_EVENT_QUIT:
+        SDL_Log("Bye");
         return SDL_APP_SUCCESS;
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
         int w, h;
@@ -246,10 +259,9 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
 {
     if (wl_state.layer_surface)
         zwlr_layer_surface_v1_destroy(wl_state.layer_surface);
-    #ifdef ZWLR_LAYER_SHELL_V1_DESTROY_SINCE_VERSION
-    if (wl_state.layer_shell)
+    if (zwlr_layer_shell_v1_get_version(wl_state.layer_shell) >= ZWLR_LAYER_SHELL_V1_DESTROY_SINCE_VERSION
+        && wl_state.layer_shell)
         zwlr_layer_shell_v1_destroy(wl_state.layer_shell);
-    #endif
     if (wl_state.wl_registry)
         wl_registry_destroy(wl_state.wl_registry);
     
