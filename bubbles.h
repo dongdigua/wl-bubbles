@@ -4,25 +4,25 @@
 #define BUBBLE_SIZE 256.0
 #define NBUBBLES 16
 
-struct _app {
+struct App {
     int i;
     float w, h;
     SDL_Texture *textures[3];
-    struct {
+    struct Bubble {
         SDL_FRect pos;
         float vx, vy;
         SDL_Texture *color;
     } bubbles[NBUBBLES];
 };
 
-static inline bool collides(struct _app *app, int a, int b) {
+static inline bool collides(struct App *app, int a, int b) {
     float dx = app->bubbles[a].pos.x - app->bubbles[b].pos.x;
     float dy = app->bubbles[a].pos.y - app->bubbles[b].pos.y;
     float dist = SDL_sqrtf(dx * dx + dy * dy);
     return dist <= BUBBLE_SIZE;
 }
 
-bool has_collision(struct _app *app, int cur) {
+bool has_collision(struct App *app, int cur) {
     for (int i = 0; i < app->i && i != cur; ++i) {
         if (collides(app, cur, i))
             return true;
@@ -30,7 +30,7 @@ bool has_collision(struct _app *app, int cur) {
     return false;
 }
 
-void resolve_collision(struct _app *app, int cur) {
+void resolve_collision(struct App *app, int cur) {
     for (int i = 0; i < app->i && i != cur; ++i) {
         if (collides(app, cur, i)) {
             // elastic collision resolution of two circles of equal mass

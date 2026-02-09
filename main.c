@@ -33,7 +33,7 @@ struct {
     struct wl_compositor *compositor;
 } wl_state = {0};
 
-struct _app app = {0};
+struct App app = {0};
 
 /*
   wayland
@@ -218,13 +218,14 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     SDL_RenderClear(renderer);
 
     if (app.i < NBUBBLES && (SDL_GetTicks() / 800) > app.i) {
-        app.bubbles[app.i].pos.x = 0;
-        app.bubbles[app.i].pos.y = app.h - BUBBLE_SIZE;
-        app.bubbles[app.i].pos.w = BUBBLE_SIZE;
-        app.bubbles[app.i].pos.h = BUBBLE_SIZE;
-        app.bubbles[app.i].vx = SDL_randf() * app.h / BUBBLE_SIZE + 0.5;
-        app.bubbles[app.i].vy = -(SDL_randf() * app.h / BUBBLE_SIZE  + 0.5);
-        app.bubbles[app.i].color = app.textures[rand() % 3];
+        struct Bubble *cur = &app.bubbles[app.i];
+        cur->pos.x = 0;
+        cur->pos.y = app.h - BUBBLE_SIZE;
+        cur->pos.w = BUBBLE_SIZE;
+        cur->pos.h = BUBBLE_SIZE;
+        cur->vx = SDL_randf() * app.h / BUBBLE_SIZE + 0.5;
+        cur->vy = -(SDL_randf() * app.h / BUBBLE_SIZE  + 0.5);
+        cur->color = app.textures[rand() % 3];
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
         SDL_RenderTexture(renderer, app.bubbles[app.i].color, NULL, &app.bubbles[app.i].pos);
@@ -235,19 +236,22 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 
     for (int i = 0; i < app.i; ++i) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-        SDL_RenderTexture(renderer, app.bubbles[i].color, NULL, &app.bubbles[i].pos);
+        struct Bubble *cur = &app.bubbles[i];
+        SDL_RenderTexture(renderer, cur->color, NULL, &cur->pos);
 
-        if (app.bubbles[i].pos.x < 0 || app.bubbles[i].pos.x + BUBBLE_SIZE > app.w)
-            app.bubbles[i].vx *= -1.0;
+        if ((cur->pos.x < 0 && cur->vx < 0)
+            || (cur->pos.x + BUBBLE_SIZE > app.w && cur->vx > 0))
+            cur->vx *= -1.0;
 
-        if (app.bubbles[i].pos.y < 0 || app.bubbles[i].pos.y + BUBBLE_SIZE > app.h)
-            app.bubbles[i].vy *= -1.0;
+        if ((cur->pos.y < 0 && cur->vy < 0)
+            || (cur->pos.y + BUBBLE_SIZE > app.h && cur->vy > 0))
+            cur->vy *= -1.0;
 
         if (has_collision(&app, i))
             resolve_collision(&app, i);
 
-        app.bubbles[i].pos.x += app.bubbles[i].vx;
-        app.bubbles[i].pos.y += app.bubbles[i].vy;
+        cur->pos.x += cur->vx;
+        cur->pos.y += cur->vy;
     }
 
     SDL_RenderPresent(renderer);
